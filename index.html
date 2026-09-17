@@ -1,1 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<title>Payment QR Assistant</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f2f4f7;
+    color: #111;
+}
+
+.container {
+    width: 100%;
+    max-width: 480px;
+    margin: auto;
+    padding: 18px;
+}
+
+.card {
+    background: #fff;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.08);
+}
+
+h1 {
+    text-align: center;
+    margin: 5px 0;
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-top: 14px;
+    font-weight: bold;
+}
+
+input, select, button {
+    width: 100%;
+    padding: 14px;
+    margin-top: 7px;
+    border-radius: 11px;
+    font-size: 16px;
+}
+
+input, select {
+    border: 1px solid #ccc;
+    background: white;
+}
+
+button {
+    border: none;
+    background: #111;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+.result {
+    margin-top: 20px;
+}
+
+.summary {
+    background: #f5f5f5;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.qr-card {
+    text-align: center;
+    border: 1px solid #ddd;
+    border-radius: 16px;
+    padding: 18px;
+    margin-top: 15px;
+}
+
+.payment-number {
+    font-size: 15px;
+    color: #666;
+}
+
+.amount {
+    font-size: 27px;
+    font-weight: bold;
+    margin: 8px 0;
+}
+
+.qr-card img {
+    width: 230px;
+    height: 230px;
+    max-width: 100%;
+    margin: 10px auto;
+    display: block;
+}
+
+.status {
+    display: inline-block;
+    padding: 7px 13px;
+    border-radius: 20px;
+    background: #eee;
+    color: #555;
+    font-size: 13px;
+    margin: 5px;
+}
+
+.small {
+    color: #777;
+    font-size: 12px;
+}
+
+.action {
+    margin-top: 10px;
+    background: #333;
+}
+
+.error {
+    color: #b00020;
+    font-size: 14px;
+    margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="card">
+
+<h1>💳 Payment QR</h1>
+
+<div class="subtitle">
+Generate separate UPI QR codes for multiple payments
+</div>
+
+<label>Total Bill Amount</label>
+<input
+    type="number"
+    id="total"
+    placeholder="Example: 3000"
+    min="1"
+    step="0.01"
+>
+
+<label>Merchant UPI ID</label>
+<input
+    type="text"
+    id="upi"
+    placeholder="example@upi"
+>
+
+<label>Merchant Name</label>
+<input
+    type="text"
+    id="merchant"
+    placeholder="Shop Name"
+>
+
+<label>Number of Payments</label>
+<select id="parts">
+    <option value="1">1 Payment</option>
+    <option value="2">2 Payments</option>
+    <option value="3">3 Payments</option>
+    <option value="4">4 Payments</option>
+    <option value="5">5 Payments</option>
+    <option value="6">6 Payments</option>
+    <option value="7">7 Payments</option>
+    <option value="8">8 Payments</option>
+    <option value="9">9 Payments</option>
+    <option value="10">10 Payments</option>
+</select>
+
+<button onclick="generateQR()">
+    Generate QR Codes
+</button>
+
+<div id="error" class="error"></div>
+
+<div id="result" class="result"></div>
+
+</div>
+
+</div>
+
+
+<script>
+
+function generateQR() {
+
+    const totalInput = document.getElementById("total").value;
+    const upi = document.getElementById("upi").value.trim();
+    const merchant = document.getElementById("merchant").value.trim();
+    const parts = parseInt(document.getElementById("parts").value);
+
+    const error = document.getElementById("error");
+    const result = document.getElementById("result");
+
+    error.innerHTML = "";
+    result.innerHTML = "";
+
+    const total = parseFloat(totalInput);
+
+    if (!total || total <= 0) {
+        error.innerHTML = "Please enter a valid bill amount.";
+        return;
+    }
+
+    if (!upi) {
+        error.innerHTML = "Please enter your UPI ID.";
+        return;
+    }
+
+    if (!parts || parts < 1) {
+        error.innerHTML = "Please select number of payments.";
+        return;
+    }
+
+    /*
+       Divide the bill into equal parts.
+       The final payment receives any rounding difference.
+    */
+
+    const baseAmount =
+        Math.floor((total / parts) * 100) / 100;
+
+    let remaining =
+        Math.round(total * 100) / 100;
+
+    let html = `
+        <div class="summary">
+            <strong>Total Bill:</strong>
+            ₹${total.toFixed(2)}
+            <br><br>
+            <strong>Number of Payments:</strong>
+            ${parts}
+        </div>
+    `;
+
+    for (let i = 1; i <= parts; i++) {
+
+        let amount;
+
+        if (i === parts) {
+            amount =
+                Math.round(remaining * 100) / 100;
+        } else {
+            amount = baseAmount;
+        }
+
+        remaining =
+            Math.round((remaining - amount) * 100) / 100;
+
+        const note =
+            "Bill Payment " + i + "/" + parts;
+
+        const upiLink =
+            "upi://pay" +
+            "?pa=" + encodeURIComponent(upi) +
+            "&pn=" + encodeURIComponent(
+                merchant || "Merchant"
+            ) +
+            "&am=" + amount.toFixed(2) +
+            "&cu=INR" +
+            "&tn=" + encodeURIComponent(note);
+
+        const qrURL =
+            "https://api.qrserver.com/v1/create-qr-code/" +
+            "?size=400x400&data=" +
+            encodeURIComponent(upiLink);
+
+        html += `
+            <div class="qr-card">
+
+                <div class="payment-number">
+                    PAYMENT ${i} OF ${parts}
+                </div>
+
+                <div class="amount">
+                    ₹${amount.toFixed(2)}
+                </div>
+
+                <img
+                    src="${qrURL}"
+                    alt="UPI Payment QR"
+                >
+
+                <div class="status">
+                    ⏳ Payment Pending
+                </div>
+
+                <p class="small">
+                    Scan this QR to pay
+                    ₹${amount.toFixed(2)}
+                </p>
+
+                <button
+                    class="action"
+                    onclick="openUPI('${encodeURIComponent(upiLink)}')"
+                >
+                    Open UPI App
+                </button>
+
+            </div>
+        `;
+    }
+
+    result.innerHTML = html;
+}
+
+
+function openUPI(encodedLink) {
+
+    const link =
+        decodeURIComponent(encodedLink);
+
+    window.location.href = link;
+}
+
+</script>
+
+</body>
+</html>
